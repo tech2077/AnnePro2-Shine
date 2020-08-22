@@ -106,10 +106,12 @@ static const GPTConfig lightAnimationConfig = {
 };
 
 static const SerialConfig usart1Config = {
-  .speed = 115200
+  .speed = 3000000
 };
 
 static uint8_t commandBuffer[64];
+
+static uint8_t frameBuffer[256];
 
 /*
  * Thread 1.
@@ -160,6 +162,30 @@ void executeMsg(msg_t msg){
       break;
     case CMD_LED_GET_NUM_PROFILES:
       sdWrite(&SD1, &amountOfProfiles, 1);
+      break;
+    case CMD_LED_SET_ALL:
+      currentProfile = 0;
+      gptStopTimer(&GPTD_BFTM0);
+      gptStopTimer(&GPTD_BFTM0);
+
+      uint8_t r = sdReadTimeout(&SD1, frameBuffer, 210, 50000);
+
+      sdPut(&SD1, CMD_LED_SET_ALL);
+
+      for (uint8_t i=0; i<NUM_COLUMN * NUM_ROW; ++i){
+        ledColors[i].red = frameBuffer[i];
+        ledColors[i].green = frameBuffer[i + 1];
+        ledColors[i].blue = frameBuffer[i + 2];
+//        ledColors[i].red = sdGetTimeout(&SD1, 1000);
+//        sdPut(&SD1, ledColors[i].red);
+//        ledColors[i].green = sdGetTimeout(&SD1, 1000);
+//        sdPut(&SD1, ledColors[i].green);
+//        ledColors[i].blue = sdGetTimeout(&SD1, 1000);
+//        sdPut(&SD1, ledColors[i].blue);
+      }
+      sdPut(&SD1, r);
+      gptStartContinuous(&GPTD_BFTM0, 1);
+      gptStartContinuous(&GPTD_BFTM1, 1);
       break;
     default:
       break;
@@ -332,7 +358,7 @@ int main(void) {
   gptStart(&GPTD_BFTM1, &lightAnimationConfig);
   gptStartContinuous(&GPTD_BFTM1, 1);
 
-  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  chThdCreateStatic(waThread1, sizeof(waThread1), HIGHPRIO, Thread1, NULL);
   /* This is now the idle thread loop, you may perform here a low priority
      task but you must never try to sleep or wait in this loop. Note that
      this tasks runs at the lowest priority level so any instruction added
