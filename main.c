@@ -168,22 +168,17 @@ void executeMsg(msg_t msg){
       gptStopTimer(&GPTD_BFTM0);
       gptStopTimer(&GPTD_BFTM0);
 
-      uint8_t r = sdReadTimeout(&SD1, frameBuffer, 210, 50000);
-
       sdPut(&SD1, CMD_LED_SET_ALL);
 
       for (uint8_t i=0; i<NUM_COLUMN * NUM_ROW; ++i){
-        ledColors[i].red = frameBuffer[i];
-        ledColors[i].green = frameBuffer[i + 1];
-        ledColors[i].blue = frameBuffer[i + 2];
-//        ledColors[i].red = sdGetTimeout(&SD1, 1000);
-//        sdPut(&SD1, ledColors[i].red);
-//        ledColors[i].green = sdGetTimeout(&SD1, 1000);
-//        sdPut(&SD1, ledColors[i].green);
-//        ledColors[i].blue = sdGetTimeout(&SD1, 1000);
-//        sdPut(&SD1, ledColors[i].blue);
+        ledColors[i].red = sdGetTimeout(&SD1, 1000);
+        sdPut(&SD1, ledColors[i].red);
+        ledColors[i].green = sdGetTimeout(&SD1, 1000);
+        sdPut(&SD1, ledColors[i].green);
+        ledColors[i].blue = sdGetTimeout(&SD1, 1000);
+        sdPut(&SD1, ledColors[i].blue);
       }
-      sdPut(&SD1, r);
+
       gptStartContinuous(&GPTD_BFTM0, 1);
       gptStartContinuous(&GPTD_BFTM1, 1);
       break;
