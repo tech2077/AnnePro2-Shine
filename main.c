@@ -70,9 +70,9 @@ ioline_t ledRows[NUM_ROW * 3] = {
   LINE_LED_ROW_5_B,
 };
 
-#define REFRESH_FREQUENCY           200
+#define REFRESH_FREQUENCY           180
 
-#define ANIMATION_TIMER_FREQUENCY   60
+#define ANIMATION_TIMER_FREQUENCY   40
 
 #define LEN(a) (sizeof(a)/sizeof(*a))
 
@@ -95,7 +95,7 @@ static uint32_t columnPWMCount = 0;
 
 // BFTM0 Configuration, this runs at 15 * REFRESH_FREQUENCY Hz
 static const GPTConfig bftm0Config = {
-  .frequency = NUM_COLUMN * REFRESH_FREQUENCY * 2 * 16,
+  .frequency = NUM_COLUMN * REFRESH_FREQUENCY * 14,
   .callback = columnCallback
 };
 
@@ -122,10 +122,12 @@ __attribute__((noreturn)) THD_FUNCTION(Thread1, arg) {
 
   while(true){
     msg_t msg;
-    msg = sdGet(&SD1);
+    chSysLock();
+    msg = sdGetTimeout(&SD1, 100);
     if(msg >= MSG_OK){
       executeMsg(msg);
     }
+    chSysUnlock();
   }
 }
 
@@ -166,17 +168,14 @@ void executeMsg(msg_t msg){
     case CMD_LED_SET_ALL:
       currentProfile = 0;
       gptStopTimer(&GPTD_BFTM0);
-      gptStopTimer(&GPTD_BFTM0);
+      gptStopTimer(&GPTD_BFTM1);
 
       sdPut(&SD1, CMD_LED_SET_ALL);
 
       for (uint8_t i=0; i<NUM_COLUMN * NUM_ROW; ++i){
         ledColors[i].red = sdGetTimeout(&SD1, 1000);
-        sdPut(&SD1, ledColors[i].red);
         ledColors[i].green = sdGetTimeout(&SD1, 1000);
-        sdPut(&SD1, ledColors[i].green);
         ledColors[i].blue = sdGetTimeout(&SD1, 1000);
-        sdPut(&SD1, ledColors[i].blue);
       }
 
       gptStartContinuous(&GPTD_BFTM0, 1);
@@ -310,14 +309,14 @@ void columnCallback(GPTDriver* _driver)
   {
     for (size_t row = 0; row < NUM_ROW; row++)
     {
-    const led_t keyLED = ledColors[currentColumn + (NUM_COLUMN * row)];
-    const uint8_t red = keyLED.red;
-    const uint8_t green = keyLED.green;
-    const uint8_t blue = keyLED.blue;
+      const led_t keyLED = ledColors[currentColumn + (NUM_COLUMN * row)];
+      const uint8_t red = keyLED.red;
+      const uint8_t green = keyLED.green;
+      const uint8_t blue = keyLED.blue;
 
-    sPWM(red, columnPWMCount, 0, ledRows[row * 3]);
-    sPWM(green, columnPWMCount, red, ledRows[row * 3+1]);
-    sPWM(blue, columnPWMCount, red+green, ledRows[row * 3+2]);
+      sPWM(red, columnPWMCount, 0, ledRows[row * 3]);
+      sPWM(green, columnPWMCount, red, ledRows[row * 3+1]);
+      sPWM(blue, columnPWMCount, red+green, ledRows[row * 3+2]);
     }
     columnPWMCount++;
   }
@@ -353,12 +352,9 @@ int main(void) {
   gptStart(&GPTD_BFTM1, &lightAnimationConfig);
   gptStartContinuous(&GPTD_BFTM1, 1);
 
-  chThdCreateStatic(waThread1, sizeof(waThread1), HIGHPRIO, Thread1, NULL);
+  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
   /* This is now the idle thread loop, you may perform here a low priority
      task but you must never try to sleep or wait in this loop. Note that
      this tasks runs at the lowest priority level so any instruction added
      here will be executed after all other tasks have been started.*/
-
-  while (true) {
-  }
 }
