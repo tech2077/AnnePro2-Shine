@@ -138,6 +138,7 @@ __attribute__((noreturn)) THD_FUNCTION(Thread1, arg) {
  * Execute action based on a message
  */
 void executeMsg(msg_t msg){
+  uint32_t key = 0;
   switch (msg) {
     case CMD_LED_ON:
       enableLeds();
@@ -173,6 +174,15 @@ void executeMsg(msg_t msg){
       break;
     case CMD_LED_CLEAR_MASK:
       changeMask(0x00);
+      break;
+    case CMD_LED_BOOTLOADER:
+      // add key to prevent mis-aligned uart
+      // from accidentally triggering bootloader
+      sdRead(&SD1, (uint8_t*)&key, 4);
+      if (key == 0xB00710AD) {
+        *((uint32_t*)0x20001ffc) = 0x0000fab2;
+        NVIC_SystemReset();
+      }
       break;
     default:
       break;
@@ -353,7 +363,7 @@ int main(void) {
     {
       ledMasks[i] = 0xFF;
     }
-  }  
+  }
   palClearLine(LINE_LED_PWR);
   sdStart(&SD1, &usart1Config);
 
