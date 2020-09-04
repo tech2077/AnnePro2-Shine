@@ -26,7 +26,7 @@
 static void columnCallback(GPTDriver* driver);
 static void animationCallback(GPTDriver* driver);
 static void executeMsg(msg_t msg);
-static void switchProfile(void);
+static void changeMask(uint8_t mask);
 static void executeProfile(void);
 static void disableLeds(void);
 static void enableLeds(void);
@@ -207,14 +207,6 @@ void setProfile(){
   chSysLock();
   profiles[currentProfile](ledColors);
   chSysUnlock();
-}
-
-/*
- * Switch to next profile and execute it
- */
-void switchProfile(){
-  currentProfile = (currentProfile+1)%amountOfProfiles;
-  executeProfile();
 }
 
 /*
