@@ -22,10 +22,12 @@
 #include "light_utils.h"
 #include "profiles.h"
 #include "miniFastLED.h"
+#include "pwm_table.h"
 
 static void columnCallback(GPTDriver* driver);
 static void animationCallback(GPTDriver* driver);
 static void executeMsg(msg_t msg);
+static void changeMask(uint8_t mask);
 static void switchProfile(void);
 static void executeProfile(void);
 static void disableLeds(void);
@@ -75,7 +77,7 @@ ioline_t ledRows[NUM_ROW * 4] = {
   0,
 };
 
-#define REFRESH_FREQUENCY           180
+#define REFRESH_FREQUENCY           2000
 
 #define ANIMATION_TIMER_FREQUENCY   40
 
@@ -102,7 +104,7 @@ static uint32_t columnPWMCount = 0;
 
 // BFTM0 Configuration, this runs at 15 * REFRESH_FREQUENCY Hz
 static const GPTConfig bftm0Config = {
-  .frequency = NUM_COLUMN * REFRESH_FREQUENCY * 14,
+  .frequency = (NUM_COLUMN) * REFRESH_FREQUENCY,
   .callback = columnCallback
 };
 
@@ -314,42 +316,56 @@ void animationCallback(GPTDriver* _driver){
   }
 }
 
-inline void sPWM(uint8_t cycle, uint8_t currentCount, uint8_t start, ioline_t port){
-  if (start+cycle>0xFF) start = 0xFF - cycle;
-  if (start <= currentCount && currentCount < start+cycle)
-    palSetLine(port);
-  else
-    palClearLine(port);
-}
+static uint16_t pwm_cnt = 0;
 
 void columnCallback(GPTDriver* _driver)
 {
   (void)_driver;
 
-  palClearLine(ledColumns[currentColumn]);
-  currentColumn = (currentColumn+1) % NUM_COLUMN;
-  if (columnPWMCount < 255)
-  {
-    for (size_t row = 0; row < NUM_ROW; row++)
-    {
-      const size_t ledIndex = currentColumn + (NUM_COLUMN * row);
-      const led_t keyLED = ledColors[ledIndex];
-      const uint8_t ledMask = ledMasks[ledIndex];
-      const uint8_t red = keyLED.red & ledMask;
-      const uint8_t green = keyLED.green & ledMask;
-      const uint8_t blue = keyLED.blue & ledMask;
+  currentColumn += 1;
+  if (currentColumn == NUM_COLUMN)
+    currentColumn = 0;
 
-      sPWM(red, columnPWMCount, 0, ledRows[row << 2]);
-      sPWM(green, columnPWMCount, red, ledRows[(row << 2) | 1]);
-      sPWM(blue, columnPWMCount, red+green, ledRows[(row << 2) | 2]);
-    }
-    columnPWMCount++;
-  }
-  else
+  for (size_t row = 0; row < NUM_ROW; row++)
   {
-    columnPWMCount = 0;
+    palWriteLine(ledRows[(row << 2u) | 0u], 0u);
+    palWriteLine(ledRows[(row << 2u) | 1u], 0u);
+    palWriteLine(ledRows[(row << 2u) | 2u], 0u);
   }
-  palSetLine(ledColumns[currentColumn]);
+
+  palWriteLine(ledColumns[currentColumn], 1u);
+
+  uint8_t arr_index = pwm_cnt >> 3u;
+  uint8_t arr_shift = pwm_cnt & 0b111u;
+
+  for (size_t row = 0; row < NUM_ROW; row++)
+  {
+    const size_t ledIndex = currentColumn + (NUM_COLUMN * row);
+    const led_t keyLED = ledColors[ledIndex];
+    const uint8_t ledMask = ledMasks[ledIndex];
+    const uint8_t red = keyLED.red & ledMask;
+    const uint8_t green = keyLED.green & ledMask;
+    const uint8_t blue = keyLED.blue & ledMask;
+
+//      sPWM(red, columnPWMCount, 0, ledRows[row << 2]);
+//      sPWM(green, columnPWMCount, red, ledRows[(row << 2) | 1]);
+//      sPWM(blue, columnPWMCount, red+green, ledRows[(row << 2) | 2]);
+
+    palWriteLine(ledRows[(row << 2) | 0], PWM_TABLE[red][arr_index] >> arr_shift);
+    palWriteLine(ledRows[(row << 2) | 1], PWM_TABLE[green][arr_index] >> arr_shift);
+    palWriteLine(ledRows[(row << 2) | 2], PWM_TABLE[blue][arr_index] >> arr_shift);
+  }
+
+  if (currentColumn == 0) {
+    pwm_cnt++;
+
+    if (pwm_cnt > 0xFF) {
+      pwm_cnt = 0;
+    }
+  }
+
+
+  palWriteLine(ledColumns[currentColumn], 0u);
 }
 
 /*
