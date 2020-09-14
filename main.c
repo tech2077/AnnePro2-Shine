@@ -184,6 +184,7 @@ void executeMsg(msg_t msg){
       currentProfile = 0;
       gptStopTimer(&GPTD_BFTM0);
       gptStopTimer(&GPTD_BFTM1);
+      palWriteLine(ledColumns[currentColumn], 0u);
 
       sdPut(&SD1, CMD_LED_SET_ALL);
 
