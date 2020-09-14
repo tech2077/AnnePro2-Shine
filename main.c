@@ -318,10 +318,13 @@ void animationCallback(GPTDriver* _driver){
 }
 
 static uint16_t pwm_cnt = 0;
+static uint8_t row_setup[NUM_ROW * 3] = {0};
 
 void columnCallback(GPTDriver* _driver)
 {
   (void)_driver;
+
+  palWriteLine(ledColumns[currentColumn], 0u);
 
   currentColumn += 1;
   if (currentColumn == NUM_COLUMN)
@@ -339,22 +342,30 @@ void columnCallback(GPTDriver* _driver)
   uint8_t arr_index = pwm_cnt >> 3u;
   uint8_t arr_shift = pwm_cnt & 0b111u;
 
-  for (size_t row = 0; row < NUM_ROW; row++)
-  {
+  for (size_t row = 0; row < NUM_ROW; row++) {
     const size_t ledIndex = currentColumn + (NUM_COLUMN * row);
     const led_t keyLED = ledColors[ledIndex];
     const uint8_t ledMask = ledMasks[ledIndex];
-    const uint8_t red = keyLED.red & ledMask;
-    const uint8_t green = keyLED.green & ledMask;
-    const uint8_t blue = keyLED.blue & ledMask;
+//    const uint8_t red = gamma[keyLED.red & ledMask];
+//    const uint8_t green = gamma[keyLED.green & ledMask];
+//    const uint8_t blue = gamma[keyLED.blue & ledMask];
+    const uint8_t red = gamma[keyLED.red & ledMask];
+    const uint8_t green = gamma[keyLED.green & ledMask];
+    const uint8_t blue = gamma[keyLED.blue & ledMask];
 
 //      sPWM(red, columnPWMCount, 0, ledRows[row << 2]);
 //      sPWM(green, columnPWMCount, red, ledRows[(row << 2) | 1]);
 //      sPWM(blue, columnPWMCount, red+green, ledRows[(row << 2) | 2]);
 
-    palWriteLine(ledRows[(row << 2) | 0], PWM_TABLE[red][arr_index] >> arr_shift);
-    palWriteLine(ledRows[(row << 2) | 1], PWM_TABLE[green][arr_index] >> arr_shift);
-    palWriteLine(ledRows[(row << 2) | 2], PWM_TABLE[blue][arr_index] >> arr_shift);
+    row_setup[row * 3] = PWM_TABLE[red][arr_index] >> arr_shift;
+    row_setup[row * 3 + 1] = PWM_TABLE[green][arr_index] >> arr_shift;
+    row_setup[row * 3 + 2] = PWM_TABLE[blue][arr_index] >> arr_shift;
+  }
+
+  for (size_t row = 0; row < NUM_ROW; row++) {
+    palWriteLine(ledRows[(row << 2) | 0], row_setup[row * 3]);
+    palWriteLine(ledRows[(row << 2) | 1], row_setup[row * 3 + 1]);
+    palWriteLine(ledRows[(row << 2) | 2], row_setup[row * 3 + 2]);
   }
 
   if (currentColumn == 0) {
@@ -365,8 +376,6 @@ void columnCallback(GPTDriver* _driver)
     }
   }
 
-
-  palWriteLine(ledColumns[currentColumn], 0u);
 }
 
 /*
