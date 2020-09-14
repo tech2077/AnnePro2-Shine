@@ -74,7 +74,7 @@ static uint8_t waterfallValue[NUM_COLUMN] = {
 };
 void animatedRainbowWaterfall(led_t* currentKeyLedColors){
   for(int i = 0; i < NUM_ROW; i++){
-    setRowColorHSV(currentKeyLedColors, i, waterfallValue[i], 255, 125);
+    setRowColorHSV(currentKeyLedColors, i, waterfallValue[i], 255, 240);
     if(waterfallValue[i] == 179){
       waterfallValue[i] = 240;
     }
@@ -82,13 +82,13 @@ void animatedRainbowWaterfall(led_t* currentKeyLedColors){
   }
 }
 
-static uint8_t breathingValue = 180;
+static uint8_t breathingValue = 200;
 static int breathingDirection = -1;
 void animatedBreathing(led_t* currentKeyLedColors){
   setAllKeysColorHSV(currentKeyLedColors, 85, 255, breathingValue);
-  if(breathingValue >= 180){
+  if(breathingValue >= 254){
     breathingDirection = -1;
-  }else if(breathingValue <= 0){
+  }else if(breathingValue <= 150){
     breathingDirection = 1;
   }
   breathingValue += breathingDirection;
@@ -97,7 +97,7 @@ void animatedBreathing(led_t* currentKeyLedColors){
 static uint8_t spectrumValue = 2;
 static int spectrumDirection = 1;
 void animatedSpectrum(led_t* currentKeyLedColors){
-  setAllKeysColorHSV(currentKeyLedColors, spectrumValue, 255, 125);
+  setAllKeysColorHSV(currentKeyLedColors, spectrumValue, 255, 240);
   if(spectrumValue >= 179){
     spectrumDirection = -1;
   }else if(spectrumValue <= 1){
